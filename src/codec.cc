@@ -60,6 +60,7 @@ void FillOutputAudioFormat(AudioFormatDescription *format) {
 //Handle<Value> NewEncoder(const Arguments& args) {
 void NewEncoder(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
+  Local<Context> context = isolate->GetCurrentContext();
   EscapableHandleScope scope(isolate);
 
   AudioFormatDescription outputFormat;
@@ -73,7 +74,7 @@ void NewEncoder(const FunctionCallbackInfo<Value>& args) {
   Local<ObjectTemplate> encoderClass = ObjectTemplate::New(isolate);
   encoderClass->SetInternalFieldCount(1);
 
-  Local<Object> obj = encoderClass->NewInstance();
+  Local<Object> obj = encoderClass->NewInstance(context).ToLocalChecked();
   obj->SetAlignedPointerInInternalField(0, encoder);
 
   args.GetReturnValue().Set(obj);
@@ -81,6 +82,7 @@ void NewEncoder(const FunctionCallbackInfo<Value>& args) {
 
 void EncodeALAC(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
+  Local<Context> context = isolate->GetCurrentContext();
   EscapableHandleScope scope(isolate);
 
   if(args.Length() < 4) {
@@ -88,16 +90,16 @@ void EncodeALAC(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(Null(isolate));
   }
 
-  Local<Object>wrapper = args[0]->ToObject();
+  Local<Object>wrapper = args[0]->ToObject(context).ToLocalChecked();
   ALACEncoder *encoder = (ALACEncoder*)wrapper->GetAlignedPointerFromInternalField(0);
 
   Local<Value> pcmBuffer = args[1];
-  unsigned char* pcmData = (unsigned char*)Buffer::Data(pcmBuffer->ToObject());
+  unsigned char* pcmData = (unsigned char*)Buffer::Data(pcmBuffer->ToObject(context).ToLocalChecked());
 
   Local<Value> alacBuffer = args[2];
-  unsigned char* alacData = (unsigned char*)Buffer::Data(alacBuffer->ToObject());
+  unsigned char* alacData = (unsigned char*)Buffer::Data(alacBuffer->ToObject(context).ToLocalChecked());
 
-  int32_t pcmSize = args[3]->Int32Value();
+  int32_t pcmSize = args[3]->Int32Value(context).FromJust();
 
   AudioFormatDescription inputFormat, outputFormat;
   FillInputAudioFormat(&inputFormat);
@@ -111,6 +113,7 @@ void EncodeALAC(const FunctionCallbackInfo<Value>& args) {
 
 void EncryptAES(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = v8::Isolate::GetCurrent();
+  Local<Context> context = isolate->GetCurrentContext();
   EscapableHandleScope scope(isolate);
 
   if(args.Length() < 2) {
@@ -119,8 +122,8 @@ void EncryptAES(const FunctionCallbackInfo<Value>& args) {
   }
 
   Local<Value> alacBuffer = args[0];
-  unsigned char* alacData = (unsigned char*)Buffer::Data(alacBuffer->ToObject());
-  int32_t alacSize = args[1]->Int32Value();
+  unsigned char* alacData = (unsigned char*)Buffer::Data(alacBuffer->ToObject(context).ToLocalChecked());
+  int32_t alacSize = args[1]->Int32Value(context).FromJust();
 
   // This will encrypt data in-place
   uint8_t *buf;
@@ -146,7 +149,7 @@ void EncryptAES(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(Null(isolate));
 }
 
-void InitCodec(Handle<Object> target) {
+void InitCodec(Local<Object> target) {
   NODE_SET_METHOD(target, "encodeALAC", EncodeALAC);
   NODE_SET_METHOD(target, "encryptAES", EncryptAES);
   NODE_SET_METHOD(target, "newEncoder", NewEncoder);

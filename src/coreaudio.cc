@@ -168,11 +168,12 @@ namespace nodeairtunes {
       coreAudio->inuse[i] = false;
     }
 
-    args.GetReturnValue().Set(o);
+    args.GetReturnValue().Set(o.Get(isolate));
   }
 
   void EnqueuePacket(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate* isolate = args.GetIsolate();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     if (args.Length() < 3) {
       printf("expected: EnqueuePacket(coreAudio, pcmData, pcmSize)\n");
@@ -180,13 +181,13 @@ namespace nodeairtunes {
       return;
     }
 
-    v8::Local<v8::Object> wrapper = args[0]->ToObject();
+    v8::Local<v8::Object> wrapper = args[0]->ToObject(context).ToLocalChecked();
     struct coreAudioObjects *coreAudio = (struct coreAudioObjects *) *wrapper;
 
     v8::Local<v8::Value> pcmBuffer = args[1];
-    unsigned char* pcmData = (unsigned char*) (Buffer::Data(pcmBuffer->ToObject()));
+    unsigned char* pcmData = (unsigned char*) (Buffer::Data(pcmBuffer->ToObject(context).ToLocalChecked()));
 
-    int32_t pcmSize = args[2]->Int32Value();
+    int32_t pcmSize = args[2]->Int32Value(context).FromJust();
 
     //We have all infos needed
 
@@ -224,6 +225,7 @@ namespace nodeairtunes {
 
   void Play(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate* isolate = args.GetIsolate();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     if (args.Length() < 2) {
       printf("expected: Play(coreAudio, audioQueueTimeRef)\n");
@@ -231,10 +233,10 @@ namespace nodeairtunes {
       return;
     }
 
-    v8::Local<v8::Object> wrapper = args[0]->ToObject();
+    v8::Local<v8::Object> wrapper = args[0]->ToObject(context).ToLocalChecked();
     struct coreAudioObjects *coreAudio = (struct coreAudioObjects *) *wrapper;
 
-    int64_t timeStamp = args[1]->IntegerValue();
+    int64_t timeStamp = args[1]->IntegerValue(context).FromJust();
 
     AudioTimeStamp myAudioQueueStartTime; // = {0};
     Float64 theNumberOfSecondsInTheFuture = timeStamp/44100.0;
@@ -258,6 +260,7 @@ namespace nodeairtunes {
 
   void Stop(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate* isolate = args.GetIsolate();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     if (args.Length() < 1) {
       printf("expected: Play(coreAudio)\n");      
@@ -265,7 +268,7 @@ namespace nodeairtunes {
       return;
     }
 
-    v8::Local<v8::Object> wrapper = args[0]->ToObject();
+    v8::Local<v8::Object> wrapper = args[0]->ToObject(context).ToLocalChecked();
     struct coreAudioObjects *coreAudio = (struct coreAudioObjects *) *wrapper;
 
     if (coreAudio->isPlaying) {
@@ -281,6 +284,7 @@ namespace nodeairtunes {
 
   void SetVolume(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate* isolate = args.GetIsolate();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     if (args.Length() < 1) {
       printf("expected: Play(coreAudio)\n");
@@ -288,9 +292,9 @@ namespace nodeairtunes {
       return;
     }
 
-    v8::Local<v8::Object> wrapper = args[0]->ToObject();
+    v8::Local<v8::Object> wrapper = args[0]->ToObject(context).ToLocalChecked();
     struct coreAudioObjects *coreAudio = (struct coreAudioObjects *) *wrapper;
-    float volumeToSet=args[1]->IntegerValue()/100.0;
+    float volumeToSet=args[1]->IntegerValue(context).FromJust()/100.0;
 
     if (coreAudio->isPlaying)
       AudioQueueSetParameter(coreAudio->audioQueue, kAudioQueueParam_Volume, volumeToSet);
@@ -300,15 +304,16 @@ namespace nodeairtunes {
 
   void GetBufferLevel(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate* isolate = args.GetIsolate();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
-    v8::Local<v8::Object> wrapper = args[0]->ToObject();
+    v8::Local<v8::Object> wrapper = args[0]->ToObject(context).ToLocalChecked();
     struct coreAudioObjects *coreAudio = (struct coreAudioObjects *) *wrapper;
     v8::Local<v8::Integer> o = v8::Integer::New(isolate, (int)((coreAudio->buffersUsed/(float)NUMBER_OF_BUFFERS)*100));
 
     args.GetReturnValue().Set(o);
   }
 
-  void InitCoreAudio(v8::Handle<v8::Object> target) {
+  void InitCoreAudio(v8::Local<v8::Object> target) {
     NODE_SET_METHOD(target, "enqueuePacket", EnqueuePacket);
     NODE_SET_METHOD(target, "newCoreAudio", NewCoreAudio);
     NODE_SET_METHOD(target, "play", Play);
